@@ -1,0 +1,30 @@
+name: Development Workflow
+
+on:
+  push:
+    branches:
+      - '!main'
+      - '*'
+
+jobs:
+  check-commit-message:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Commit Message
+        uses: gsactions/commit-message-checker@v2
+        with:
+          pattern: '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\([\w\-\.]+\))?(!)?: ([\w ])+([\s\S]*)'
+          flags: 'gm'
+          error: |
+            Your commit message does not match the required format.
+
+            Please follow the conventional commit message format:
+            `<type>(<scope>): <subject> (<issue-number>)`
+
+            Where:
+            - `<type>` is one of: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, or test
+            - `<scope>` is optional, but should be a descriptive label (e.g., feature-name)
+            - `<subject>` is a brief description of the changes
+            - `<issue-number>` is the related issue number (e.g., AEROGEAR-123)
+
+            Example: `feat(feature-name): add new feature (AEROGEAR-123)`

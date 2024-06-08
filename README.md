@@ -67,3 +67,69 @@ Build your own database from scratch in go （使用 go 从头构建你的数据
 
 即使是基于文件的 sqlite 也是支持一定的并发，但是在进程中处理会更为方便，所以大多数的数据库需要使用 server
 并发的引入就需要考虑原子化操作，这就增加了一个新的概念：事务（transaction）
+
+## 文件 vs 数据库
+
+就像上面所提到的那样，直接写入文件有两种简单的方式，代码示例如下
+
+```go
+// 写入新的文件后对文件重命名以覆盖旧文件
+func SaveData(path string, data []byte) error {
+  tmp := fmt.Sprintf("%s.tmp.%d", path, randomInt())
+  fp, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0664)
+  if err != nil {
+  return err
+  }
+  defer fp.Close()
+  
+  _, err = fp.Write(data)
+  if err != nil {
+  os.Remove(tmp)
+  return err
+  }
+  
+  return os.Rename(tmp, path)
+}
+
+// 上述代码存在一个问题，Linux 下文件的写入是缓冲的，所以需要调用 fsync 刷新缓存
+func SaveDataFsync(path string, data []byte) error {
+  tmp := fmt.Sprintf("%s.tmp.%d", path, randomInt())
+  fp, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0664)
+  if err != nil {
+  return err
+  }
+  defer fp.Close()
+  
+  _, err = fp.Write(data)
+  if err != nil {
+  os.Remove(tmp)
+  return err
+  }
+  
+  err = fp.Sync() // fsync
+  if err != nil {
+  os.Remove(tmp)
+  return err
+  }
+  
+  return os.Rename(tmp, path)
+}
+```
+
+另一种方式就是追加写入的形式，这种方式的好处是可以保证数据的完整性
+```go
+func LogCreate(path string) (*os.File, error) {
+    return os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0664)
+}
+
+func LogAppend(fp *os.File, line string) error {
+    buf := []byte(line)
+    buf = append(buf, '\n')
+    _, err := fp.Write(buf)
+    if err != nil {
+        return err
+    }
+    return fp.Sync() // fsync
+}
+
+```
